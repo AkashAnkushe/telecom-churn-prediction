@@ -45,6 +45,10 @@ models/     → Saved trained model
 notebooks/  → EDA & validation  
 data/       → Dataset  
 
+## Live Demo
+
+[Click here to try the app](https://telecom-churn-prediction-ikcyangduvwop7dnuappor6.streamlit.app/)
+
 ## Author
 
 Akash Ankushe
