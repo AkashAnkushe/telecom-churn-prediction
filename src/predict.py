@@ -5,7 +5,7 @@ import pandas as pd
 from src.feature_engineering import create_features
 
 # Final threshold decided during modeling
-THRESHOLD = 0.35
+THRESHOLD = 0.40
 
 
 def load_model():

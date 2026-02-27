@@ -227,8 +227,8 @@ with st.expander("📦 Model Details (Technical Overview)"):
 
     st.write("**Model Type:** Logistic Regression")
     st.write("**ROC-AUC:** 0.65")
-    st.write("**Accuracy:** 0.64")
-    st.write("**Threshold Used:** 0.35")
+    st.write("**Accuracy:** 0.54 (threshold tuned for higher churn recall)")
+    st.write("**Threshold Used:** 0.40")
     st.write("**Training Samples:** 20,000")
     st.write("**Test Samples:** 5,000")
 
