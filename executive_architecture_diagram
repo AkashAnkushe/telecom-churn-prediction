@@ -1,0 +1,25 @@
+digraph {
+	rankdir=TB
+	size="8,10"
+	node [color=lightblue shape=box style=filled]
+	User [label="👤 User"]
+	node [color=lightgreen shape=box style=filled]
+	UI [label="Presentation Layer
+Streamlit UI (app.py)"]
+	node [color=orange shape=box style=filled]
+	Predict [label="Application Layer
+Prediction Logic (predict.py)"]
+	node [color=yellow shape=box style=filled]
+	Model [label="ML Layer
+Logistic Regression Model"]
+	Pipeline [label="Preprocessing Pipeline
+(StandardScaler + OneHotEncoder)"]
+	node [color=pink shape=box style=filled]
+	Data [label="Data Layer
+telecom_churn.csv"]
+	User -> UI
+	UI -> Predict
+	Predict -> Model
+	Model -> Pipeline
+	Pipeline -> Data
+}

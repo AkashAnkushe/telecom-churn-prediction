@@ -1,0 +1,19 @@
+digraph {
+	rankdir=LR size="8,5"
+	User [label=User]
+	UI [label="Streamlit UI
+(app.py)"]
+	Predict [label="Prediction Logic
+(predict.py)"]
+	Model [label="Trained Model
+(churn_model.pkl)"]
+	Pipeline [label="Preprocessing Pipeline
+(StandardScaler + OHE)"]
+	Data [label="Telecom Dataset
+(telecom_churn.csv)"]
+	User -> UI
+	UI -> Predict
+	Predict -> Model
+	Model -> Pipeline
+	Pipeline -> Data
+}

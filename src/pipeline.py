@@ -6,10 +6,15 @@ from sklearn.linear_model import LogisticRegression
 
 
 def build_pipeline(X: pd.DataFrame):
+    """
+    Build preprocessing + logistic regression pipeline.
+    """
 
+    # Identify column types
     num_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
     cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
+    # Preprocessing
     num_transformer = StandardScaler()
     cat_transformer = OneHotEncoder(handle_unknown="ignore")
 
@@ -20,14 +25,10 @@ def build_pipeline(X: pd.DataFrame):
         ]
     )
 
+    # Logistic Regression model
     model = Pipeline(steps=[
         ("preprocessing", preprocessor),
-        ("classifier", LogisticRegression(
-            max_iter=1000,
-            solver="liblinear",
-            class_weight="balanced",
-            C=1.0
-        ))
+        ("classifier", LogisticRegression(max_iter=1000))
     ])
 
     return model

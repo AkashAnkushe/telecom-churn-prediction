@@ -39,21 +39,10 @@ def main():
     model.fit(X_train, y_train)
 
     # Evaluate
-    
-    from sklearn.metrics import classification_report
-    import numpy as np
-
     y_probs = model.predict_proba(X_test)[:, 1]
     roc_score = roc_auc_score(y_test, y_probs)
 
     print("ROC-AUC:", roc_score)
-
-    print("\nThreshold Analysis:\n")
-
-    for t in [0.3, 0.35, 0.4, 0.45, 0.5]:
-        y_pred = (y_probs >= t).astype(int)
-        print(f"\nThreshold: {t}")
-        print(classification_report(y_test, y_pred))
 
     # Save model
     os.makedirs("models", exist_ok=True)
