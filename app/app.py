@@ -428,6 +428,6 @@ elif page == "Model Insights":
     y="F1 Score",
     title="Model Comparison (F1 Score)",
     color="Model"
-)
+    )
 
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
