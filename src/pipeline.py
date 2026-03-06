@@ -3,18 +3,16 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+from imblearn.pipeline import Pipeline as ImbPipeline
+from imblearn.over_sampling import SMOTE
 
 
 def build_pipeline(X: pd.DataFrame):
-    """
-    Build preprocessing + logistic regression pipeline.
-    """
 
-    # Identify column types
     num_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
     cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-    # Preprocessing
     num_transformer = StandardScaler()
     cat_transformer = OneHotEncoder(handle_unknown="ignore")
 
@@ -25,10 +23,28 @@ def build_pipeline(X: pd.DataFrame):
         ]
     )
 
-    # Logistic Regression model
-    model = Pipeline(steps=[
+    logistic = LogisticRegression(
+        class_weight="balanced",
+        max_iter=2000
+    )
+
+    pipeline = ImbPipeline(steps=[
         ("preprocessing", preprocessor),
-        ("classifier", LogisticRegression(max_iter=1000))
+        ("smote", SMOTE(random_state=42)),
+        ("classifier", logistic)
     ])
+
+    param_grid = {
+        "classifier__C": [0.01, 0.1, 0.5, 1, 5],
+        "classifier__solver": ["liblinear", "lbfgs"]
+    }
+
+    model = GridSearchCV(
+        pipeline,
+        param_grid,
+        cv=5,
+        scoring="roc_auc",
+        n_jobs=-1
+    )
 
     return model

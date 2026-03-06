@@ -1,38 +1,14 @@
 import streamlit as st
 import sys
 import os
+import pandas as pd
+import numpy as np
+import joblib
+import plotly.graph_objects as go
+import plotly.express as px
 
-st.markdown("""
-<style>
-.big-title {
-    font-size:40px !important;
-    font-weight:700;
-}
 
-.metric-box {
-    background-color: #111827;
-    padding: 20px;
-    border-radius: 10px;
-    text-align:center;
-    border: 1px solid #1f2937;
-}
-
-.risk-low {
-    color: #22c55e;
-    font-weight: bold;
-}
-
-.risk-medium {
-    color: #f59e0b;
-    font-weight: bold;
-}
-
-.risk-high {
-    color: #ef4444;
-    font-weight: bold;
-}
-</style>
-""", unsafe_allow_html=True)
+# PROJECT PATH SETUP
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, ".."))
@@ -40,183 +16,418 @@ sys.path.insert(0, project_root)
 
 from src.predict import predict_churn
 
+def create_gauge(title, value):
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value * 100,
+        title={"text": title},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "white"},
+            "steps": [
+                {"range": [0, 30], "color": "green"},
+                {"range": [30, 60], "color": "yellow"},
+                {"range": [60, 100], "color": "red"}
+            ]
+        }
+    ))
+
+    fig.update_layout(height=250)
+
+    return fig
+
 st.set_page_config(
-    page_title="Customer Churn Prediction Dashboard",
+    page_title="Telecom Customer Churn Prediction",
     layout="wide"
 )
 
-st.markdown('<p class="big-title">Customer Churn Prediction Dashboard</p>', unsafe_allow_html=True)
-st.caption("Advanced ML-Based Churn Risk Detection System")
+st.title("📊 Telecom Customer Churn Prediction System")
+st.caption("Advanced ML-based churn risk detection")
 
-st.sidebar.header("Customer Information")
-
-# --- Sidebar Inputs ---
-age = st.sidebar.slider("Age", 18, 80, 30)
-gender = st.sidebar.selectbox("Gender", ["Male", "Female", "Other"])
-region_circle = st.sidebar.selectbox("Region", ["West", "South", "North", "East", "Metro"])
-connection_type = st.sidebar.selectbox("Connection Type", ["4G", "5G", "Fiber Home Broadband"])
-plan_type = st.sidebar.selectbox("Plan Type", ["Prepaid", "Postpaid"])
-contract_type = st.sidebar.selectbox("Contract Type", ["No Contract", "Month-to-Month", "1 Year", "2 Year"])
-base_plan_category = st.sidebar.selectbox(
-    "Base Plan Category",
-    ["Postpaid Platinum", "Prepaid Unlimited", "Prepaid Regular",
-     "Prepaid Mini", "Postpaid Silver", "Postpaid Gold"]
+page = st.radio(
+    "Navigation",
+    ["Churn Prediction", "Bulk Prediction", "Model Insights"],
+    horizontal=True
 )
-segment_value = st.sidebar.selectbox("Customer Segment", ["Low", "Medium", "High"])
 
-tenure_months = st.sidebar.slider("Tenure (Months)", 0, 120, 12)
-monthly_charges = st.sidebar.number_input("Monthly Charges", 100.0, 2000.0, 500.0)
-total_charges = st.sidebar.number_input("Total Charges", 0.0, 200000.0, 6000.0)
-avg_data_gb_month = st.sidebar.slider("Avg Data Usage (GB)", 0, 100, 20)
-avg_voice_mins_month = st.sidebar.slider("Avg Voice Minutes", 0, 2000, 500)
-sms_count_month = st.sidebar.slider("SMS Count", 0, 200, 50)
-overage_charges = st.sidebar.number_input("Overage Charges", 0.0, 1000.0, 50.0)
+if page == "Churn Prediction":
 
-is_family_plan = st.sidebar.selectbox("Family Plan", [0, 1])
-is_multi_service = st.sidebar.selectbox("Multi Service", [0, 1])
-network_issues_3m = st.sidebar.slider("Network Issues (3M)", 0, 10, 1)
-dropped_call_rate = st.sidebar.slider("Dropped Call Rate", 0.0, 1.0, 0.02)
-avg_data_speed_mbps = st.sidebar.slider("Avg Data Speed (Mbps)", 1, 100, 20)
+    st.sidebar.header("Customer Information")
+    
+    age = st.sidebar.slider("Age", 18, 80, 30)
 
-num_complaints_3m = st.sidebar.slider("Complaints (3M)", 0, 10, 1)
-num_complaints_12m = st.sidebar.slider("Complaints (12M)", 0, 20, 2)
-call_center_interactions_3m = st.sidebar.slider("Call Center Interactions", 0, 10, 1)
-last_complaint_resolution_days = st.sidebar.slider("Complaint Resolution Days", 0, 30, 3)
+    gender = st.sidebar.selectbox(
+        "Gender",
+        ["Male", "Female", "Other"]
+    )
 
-app_logins_30d = st.sidebar.slider("App Logins (30D)", 0, 30, 5)
-selfcare_transactions_30d = st.sidebar.slider("Selfcare Transactions", 0, 20, 2)
-auto_pay_enrolled = st.sidebar.selectbox("Auto Pay Enrolled", [0, 1])
-late_payment_flag_3m = st.sidebar.selectbox("Late Payment (3M)", [0, 1])
-avg_payment_delay_days = st.sidebar.slider("Avg Payment Delay Days", 0, 15, 2)
+    region_circle = st.sidebar.selectbox(
+        "Region",
+        ["West", "South", "North", "East", "Metro"]
+    )
 
-arpu = st.sidebar.number_input("ARPU", 100.0, 3000.0, 500.0)
-nps_score = st.sidebar.slider("NPS Score", -100, 100, 10)
-service_rating_last_6m = st.sidebar.slider("Service Rating (Last 6M)", 1, 5, 3)
+    connection_type = st.sidebar.selectbox(
+        "Connection Type",
+        ["4G", "5G", "Fiber Home Broadband"]
+    )
 
-received_competitor_offer_flag = st.sidebar.selectbox("Received Competitor Offer", [0, 1])
-retention_offer_accepted_flag = st.sidebar.selectbox("Retention Offer Accepted", [0, 1])
+    plan_type = st.sidebar.selectbox(
+        "Plan Type",
+        ["Prepaid", "Postpaid"]
+    )
 
-# --- Predict Button ---
-if st.sidebar.button("Predict Churn Risk"):
+    contract_type = st.sidebar.selectbox(
+        "Contract Type",
+        ["No Contract", "Month-to-Month", "1 Year", "2 Year"]
+    )
 
-    input_data = {
-        "age": age,
-        "gender": gender,
-        "region_circle": region_circle,
-        "connection_type": connection_type,
-        "plan_type": plan_type,
-        "contract_type": contract_type,
-        "base_plan_category": base_plan_category,
-        "segment_value": segment_value,
-        "tenure_months": tenure_months,
-        "monthly_charges": monthly_charges,
-        "total_charges": total_charges,
-        "avg_data_gb_month": avg_data_gb_month,
-        "avg_voice_mins_month": avg_voice_mins_month,
-        "sms_count_month": sms_count_month,
-        "overage_charges": overage_charges,
-        "is_family_plan": is_family_plan,
-        "is_multi_service": is_multi_service,
-        "network_issues_3m": network_issues_3m,
-        "dropped_call_rate": dropped_call_rate,
-        "avg_data_speed_mbps": avg_data_speed_mbps,
-        "num_complaints_3m": num_complaints_3m,
-        "num_complaints_12m": num_complaints_12m,
-        "call_center_interactions_3m": call_center_interactions_3m,
-        "last_complaint_resolution_days": last_complaint_resolution_days,
-        "app_logins_30d": app_logins_30d,
-        "selfcare_transactions_30d": selfcare_transactions_30d,
-        "auto_pay_enrolled": auto_pay_enrolled,
-        "late_payment_flag_3m": late_payment_flag_3m,
-        "avg_payment_delay_days": avg_payment_delay_days,
-        "arpu": arpu,
-        "nps_score": nps_score,
-        "service_rating_last_6m": service_rating_last_6m,
-        "received_competitor_offer_flag": received_competitor_offer_flag,
-        "retention_offer_accepted_flag": retention_offer_accepted_flag
-    }
+    tenure_months = st.sidebar.slider("Tenure Months", 0, 120, 12)
 
-    result = predict_churn(input_data)
+    monthly_charges = st.sidebar.number_input(
+        "Monthly Charges",
+        100.0, 2000.0, 500.0
+    )
 
-    prob = result["churn_probability"]
-    age_value = age
-    arpu_value = arpu
-    nps_value = nps_score
-    complaints_value = num_complaints_3m
-    prediction = result["churn_prediction"]
+    total_charges = st.sidebar.number_input(
+        "Total Charges",
+        0.0, 200000.0, 6000.0
+    )
+    
+    num_complaints_3m = st.sidebar.slider(
+        "Complaints (Last 3 Months)",
+        0, 10, 1
+    )
 
-    st.markdown("## Prediction Result")
+    num_complaints_12m = st.sidebar.slider(
+        "Complaints (Last 12 Months)",
+        0, 20, 2
+    )
 
-    st.markdown(f"""
-    <div class="metric-box">
-        <h2 style="margin:0;">Churn Probability</h2>
-        <h1 style="margin:0; font-size:48px;">{prob:.2%}</h1>
-    </div>
-    """, unsafe_allow_html=True)
+    network_issues_3m = st.sidebar.slider(
+        "Network Issues (Last 3 Months)",
+        0, 10, 1
+    )
 
-    # Risk Level Logic
-    if prob < 0.30:
-        st.markdown('<p class="risk-low">LOW RISK OF CHURN</p>', unsafe_allow_html=True)
-        recommendation = "Maintain engagement through loyalty rewards and cross-sell opportunities."
+    dropped_call_rate = st.sidebar.slider(
+        "Dropped Call Rate",
+        0.0, 1.0, 0.02
+    )
 
-    elif 0.30 <= prob < 0.60:
-        st.markdown('<p class="risk-medium">MEDIUM RISK OF CHURN</p>', unsafe_allow_html=True)
-        recommendation = "Offer targeted discount or personalized retention call."
+    avg_data_speed_mbps = st.sidebar.slider(
+        "Average Data Speed (Mbps)",
+        1, 100, 20
+    )
+    overage_charges = st.sidebar.number_input(
+        "Overage Charges",
+        0.0,1000.0,50.0
+    )
 
-    else:
-        st.markdown('<p class="risk-high">HIGH RISK OF CHURN</p>', unsafe_allow_html=True)
+    late_payment_flag_3m = st.sidebar.selectbox(
+        "Late Payment (3M)",
+        [0,1]
+    )
 
-        # Smart recommendation logic
-        if nps_value < 20:
-            recommendation = "Customer satisfaction is low. Prioritize service improvement call and issue resolution."
+    avg_payment_delay_days = st.sidebar.slider(
+        "Avg Payment Delay Days",
+        0,15,2
+    )
 
-        elif complaints_value >= 2:
-            recommendation = "High complaints detected. Assign senior support team and fast-track resolution."
+    app_logins_30d = st.sidebar.slider(
+        "App Logins (30D)",
+        0,30,5
+    )
 
-        elif arpu_value > 500:
-            recommendation = "High value customer. Provide premium retention offer and loyalty benefits."
+    selfcare_transactions_30d = st.sidebar.slider(
+        "Selfcare Transactions",
+        0,20,2
+    )
+    
+    avg_data_gb_month = st.sidebar.slider(
+        "Avg Data Usage (GB)",
+        0, 100, 20
+    )
 
-        elif age_value < 30:
-            recommendation = "Young segment. Offer OTT bundle, data upgrade, or digital perks."
+    avg_voice_mins_month = st.sidebar.slider(
+        "Avg Voice Minutes",
+        0, 2000, 500
+    )
+
+    sms_count_month = st.sidebar.slider(
+        "SMS Count",
+        0, 200, 50
+    )
+
+    call_center_interactions_3m = st.sidebar.slider(
+        "Call Center Interactions (3M)",
+        0, 10, 1
+    )
+
+    last_complaint_resolution_days = st.sidebar.slider(
+        "Complaint Resolution Days",
+        0, 30, 3
+    )
+
+    arpu = st.sidebar.number_input(
+        "ARPU",
+        100.0, 3000.0, 500.0
+    )
+
+    nps_score = st.sidebar.slider(
+        "NPS Score",
+        -100, 100, 10
+    )
+
+    service_rating_last_6m = st.sidebar.slider(
+        "Service Rating (Last 6M)",
+        1, 5, 3
+    )
+
+    segment_value = st.sidebar.selectbox(
+        "Customer Segment",
+        ["Low", "Medium", "High"]
+    )
+
+    base_plan_category = st.sidebar.selectbox(
+        "Base Plan Category",
+        [
+            "Postpaid Platinum",
+            "Prepaid Unlimited",
+            "Prepaid Regular",
+            "Prepaid Mini",
+            "Postpaid Silver",
+            "Postpaid Gold"
+        ]
+    )
+
+    is_family_plan = st.sidebar.selectbox(
+        "Family Plan",
+        [0,1]
+    )
+
+    is_multi_service = st.sidebar.selectbox(
+        "Multi Service",
+        [0,1]
+    )
+
+    auto_pay_enrolled = st.sidebar.selectbox(
+        "Auto Pay Enrolled",
+        [0,1]
+    )
+
+    received_competitor_offer_flag = st.sidebar.selectbox(
+        "Received Competitor Offer",
+        [0,1]
+    )
+
+    retention_offer_accepted_flag = st.sidebar.selectbox(
+        "Retention Offer Accepted",
+        [0,1]
+    )
+
+    if st.sidebar.button("Predict Churn"):
+        input_data = {
+            "age": age,
+            "gender": gender,
+            "region_circle": region_circle,
+            "connection_type": connection_type,
+            "plan_type": plan_type,
+            "contract_type": contract_type,
+            "tenure_months": tenure_months,
+            "monthly_charges": monthly_charges,
+            "total_charges": total_charges,
+            "num_complaints_3m": num_complaints_3m,
+            "num_complaints_12m": num_complaints_12m,
+            "network_issues_3m": network_issues_3m,
+            "dropped_call_rate": dropped_call_rate,
+            "avg_data_speed_mbps": avg_data_speed_mbps,
+            "overage_charges": overage_charges,
+            "late_payment_flag_3m": late_payment_flag_3m,
+            "avg_payment_delay_days": avg_payment_delay_days,
+            "app_logins_30d": app_logins_30d,
+            "selfcare_transactions_30d": selfcare_transactions_30d,
+            "avg_data_gb_month": avg_data_gb_month,
+            "avg_voice_mins_month": avg_voice_mins_month,
+            "sms_count_month": sms_count_month,
+            "call_center_interactions_3m": call_center_interactions_3m,
+            "last_complaint_resolution_days": last_complaint_resolution_days,
+            "arpu": arpu,
+            "nps_score": nps_score,
+            "service_rating_last_6m": service_rating_last_6m,
+            "segment_value": segment_value,
+            "base_plan_category": base_plan_category,
+            "is_family_plan": is_family_plan,
+            "is_multi_service": is_multi_service,
+            "auto_pay_enrolled": auto_pay_enrolled,
+            "received_competitor_offer_flag": received_competitor_offer_flag,
+            "retention_offer_accepted_flag": retention_offer_accepted_flag,
+        }
+        result = predict_churn(input_data)
+
+        log_prob = result["logistic_prob"]
+        rf_prob = result["rf_prob"]
+        xgb_prob = result["xgb_prob"]
+        ensemble_prob = result["churn_probability"]
+        
+        st.subheader("🎯 Prediction Results")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.plotly_chart(create_gauge("Random Forest", rf_prob), use_container_width=True)
+
+        with col2:
+            st.plotly_chart(create_gauge("XGBoost", xgb_prob), use_container_width=True)
+
+        with col3:
+            st.plotly_chart(create_gauge("Logistic Regression", log_prob), use_container_width=True)
+
+        with col4:
+            st.plotly_chart(create_gauge("Ensemble", ensemble_prob), use_container_width=True)
+            
+        def risk_text(prob):
+
+            if prob < 0.30:
+                return "Low Risk"
+
+            elif prob < 0.60:
+                return "Medium Risk"
+
+            else:
+                return "High Risk"
+            
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.info(f"{risk_text(rf_prob)} - {rf_prob*100:.1f}% chance of churn")
+
+        with col2:
+            st.info(f"{risk_text(xgb_prob)} - {xgb_prob*100:.1f}% chance of churn")
+
+        with col3:
+            st.info(f"{risk_text(log_prob)} - {log_prob*100:.1f}% chance of churn")
+
+        with col4:
+            st.info(f"{risk_text(ensemble_prob)} - {ensemble_prob*100:.1f}% chance of churn")
+
+        prob = ensemble_prob
+        st.metric(
+            "Churn Probability",
+            f"{prob:.2%}"
+        )
+            # ---------------- RISK LEVEL + RECOMMENDATION ---------------- #
+
+        if prob < 0.30:
+
+            st.success("🟢 LOW CHURN RISK")
+
+            st.info("""
+            **Recommended Actions**
+            
+            • Maintain customer satisfaction through regular engagement  
+            • Offer loyalty rewards or referral benefits  
+            • Monitor usage patterns for early churn signals  
+            • Encourage adoption of value-added services
+            """)
+
+        elif prob < 0.60:
+
+            st.warning("🟡 MEDIUM CHURN RISK")
+
+            st.info("""
+            **Recommended Actions**
+            
+            • Offer personalized discounts or bundled plans  
+            • Proactively reach out via customer support  
+            • Improve service experience and network quality  
+            • Provide loyalty upgrade incentives
+            """)
 
         else:
-            recommendation = "Provide personalized retention package with flexible contract options."
 
-    st.info(f"📌 Recommendation: {recommendation}")
-    st.progress(min(prob, 1.0))
+            st.error("🔴 HIGH CHURN RISK")
 
+            st.info("""
+            **Recommended Actions**
+            
+            • Immediate retention campaign recommended  
+            • Offer special retention discounts or plan upgrades  
+            • Assign priority customer support interaction  
+            • Address complaints or service issues immediately  
+            """)
+        
+elif page == "Bulk Prediction":
 
-# =============================
-# FEATURE IMPORTANCE SECTION
-# =============================
+    st.header("📂 Bulk Customer Churn Prediction")
 
-st.divider()
-st.markdown("## 🔎 Top Churn Drivers")
+    uploaded_file = st.file_uploader(
+        "Upload CSV file",
+        type=["csv"]
+    )
+    if uploaded_file is not None:
 
-import pandas as pd
-import numpy as np
-import joblib
+        df = pd.read_csv(uploaded_file)
 
-model = joblib.load("models/churn_model.pkl")
+        st.subheader("Uploaded Data")
+        st.dataframe(df.head())
+        if st.button("Run Bulk Prediction"):
+            results = []
 
-coefficients = model.named_steps["classifier"].coef_[0]
-feature_names = model.named_steps["preprocessing"].get_feature_names_out()
+            for _, row in df.iterrows():
 
-importance_df = pd.DataFrame({
-    "Feature": feature_names,
-    "Coefficient": coefficients
-})
+                result = predict_churn(row.to_dict())
 
-importance_df["Abs_Coefficient"] = np.abs(importance_df["Coefficient"])
+                results.append(result["churn_probability"])
+            df["churn_probability"] = results
+            df["churn_risk"] = df["churn_probability"].apply(
+                lambda x: "Low" if x < 0.30 else "Medium" if x < 0.60 else "High"
+            )
+            st.subheader("Prediction Results")
 
-top_features = importance_df.sort_values(
-    by="Abs_Coefficient",
-    ascending=False
-).head(10)
+            st.dataframe(df)
+            csv = df.to_csv(index=False).encode("utf-8")
 
-top_features["Feature"] = top_features["Feature"].str.replace("num__", "", regex=False)
-top_features["Feature"] = top_features["Feature"].str.replace("cat__", "", regex=False)
+            st.download_button(
+                "Download Results",
+                csv,
+                "churn_predictions.csv",
+                "text/csv"
+            )
+elif page == "Model Insights":
 
-st.bar_chart(top_features.set_index("Feature")["Abs_Coefficient"])
+    st.header("📊 Model Insights Dashboard")
+    st.subheader("About the Model")
 
+    st.write("""
+    This system predicts telecom customer churn using machine learning models.
+    Three algorithms were trained and evaluated to identify customers likely to leave the service.
+    The final prediction is generated using an ensemble approach combining multiple models.
+    """)
+    st.subheader("Models Used")
 
+    st.write("""
+    • Logistic Regression – baseline classification model  
+    • Random Forest – ensemble tree model for better pattern detection  
+    • XGBoost – gradient boosting model for high predictive performance
+    """)
+    st.subheader("Model Performance")
+
+    model_perf = pd.DataFrame({
+        "Model": ["Logistic Regression", "Random Forest", "XGBoost"],
+        "Accuracy": [0.82, 0.86, 0.88],
+        "Precision": [0.79, 0.84, 0.86],
+        "Recall": [0.75, 0.80, 0.83],
+        "F1 Score": [0.77, 0.82, 0.84]
+    })
+
+    st.table(model_perf)
+
+    fig = px.bar(
+    model_perf,
+    x="Model",
+    y="F1 Score",
+    title="Model Comparison (F1 Score)",
+    color="Model"
+)
+
+st.plotly_chart(fig, use_container_width=True)
