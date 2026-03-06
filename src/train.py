@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 
-from src.feature_engineering import create_features
+from feature_engineering import create_features
 from pipeline import build_pipeline
 
 from xgboost import XGBClassifier

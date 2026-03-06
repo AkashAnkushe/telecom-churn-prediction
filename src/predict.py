@@ -1,13 +1,12 @@
 import os
 import joblib
 import pandas as pd
-
-from src.feature_engineering import create_features
+from feature_engineering import create_features
 
 THRESHOLD = 0.40
 
 
-def load_models():
+def load_models(): 
 
     logistic = joblib.load("models/logistic_model.pkl")
     rf = joblib.load("models/random_forest_model.pkl")

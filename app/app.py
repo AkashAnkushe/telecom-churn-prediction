@@ -7,14 +7,18 @@ import joblib
 import plotly.graph_objects as go
 import plotly.express as px
 
+# Fix path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# Import project modules
+from src.feature_engineering import create_features
+from src.predict import predict_churn
 
 # PROJECT PATH SETUP
-
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.insert(0, project_root)
 
-from src.predict import predict_churn
 
 def create_gauge(title, value):
 
