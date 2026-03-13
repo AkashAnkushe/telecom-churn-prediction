@@ -1,16 +1,20 @@
 import os
 import joblib
 import pandas as pd
-from feature_engineering import create_features
+from src.feature_engineering import create_features
 
 THRESHOLD = 0.40
 
 
-def load_models(): 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
 
-    logistic = joblib.load("models/logistic_model.pkl")
-    rf = joblib.load("models/random_forest_model.pkl")
-    xgb = joblib.load("models/xgb_model.pkl")
+
+def load_models():
+
+    logistic = joblib.load(os.path.join(MODEL_DIR, "logistic_model.pkl"))
+    rf = joblib.load(os.path.join(MODEL_DIR, "random_forest_model.pkl"))
+    xgb = joblib.load(os.path.join(MODEL_DIR, "xgb_model.pkl"))
 
     return logistic, rf, xgb
 
